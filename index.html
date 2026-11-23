@@ -7,6 +7,9 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Google Identity Services SDK -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <!-- Firebase App & Firestore SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -26,11 +29,11 @@
     ::-webkit-scrollbar-thumb:hover { background: rgba(156, 163, 175, 0.5); }
   </style>
 </head>
-<body class="bg-gray-100 dark:bg-zinc-950 text-gray-900 dark:text-zinc-100 h-screen overflow-hidden flex select-none">
+<body class="bg-gradient-to-br from-zinc-950 via-zinc-900 to-black text-gray-100 h-screen overflow-hidden flex select-none">
 
   <!-- Sidebar -->
-  <aside id="sidebar" class="fixed md:static inset-y-0 left-0 z-30 w-72 bg-white dark:bg-zinc-900 border-r border-gray-200 dark:border-zinc-800 flex flex-col transform -translate-x-full md:translate-x-0 transition-transform duration-200 ease-in-out">
-    <div class="h-14 px-4 border-b border-gray-200 dark:border-zinc-800 flex items-center justify-between shrink-0">
+  <aside id="sidebar" class="fixed md:static inset-y-0 left-0 z-30 w-72 bg-zinc-900/90 backdrop-blur-md border-r border-zinc-800/80 flex flex-col transform -translate-x-full md:translate-x-0 transition-transform duration-200 ease-in-out shadow-xl">
+    <div class="h-14 px-4 border-b border-zinc-800/80 flex items-center justify-between shrink-0">
       <div class="flex items-center gap-2.5">
         <div class="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white font-bold shadow-sm">🔒</div>
         <span class="font-bold text-lg tracking-tight">PulseChat Private</span>
@@ -41,8 +44,8 @@
     <div class="flex-1 overflow-y-auto px-3 py-4 space-y-6">
       <div>
         <div class="px-2 mb-1.5 flex items-center justify-between">
-          <span class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-zinc-400">Channels</span>
-          <button onclick="createNewChannel()" class="text-xs text-brand-500 hover:text-brand-600 font-bold px-1.5 py-0.5 rounded bg-brand-500/10">+ New</button>
+          <span class="text-xs font-semibold uppercase tracking-wider text-zinc-400">Channels</span>
+          <button onclick="createNewChannel()" class="text-xs text-brand-400 hover:text-brand-300 font-bold px-1.5 py-0.5 rounded bg-brand-500/10 transition">+ New</button>
         </div>
         <ul id="channelList" class="space-y-0.5">
           <!-- Dynamically loaded channels appear here -->
@@ -51,8 +54,8 @@
 
       <!-- Gmail Invite Section -->
       <div class="px-2">
-        <span class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-zinc-400 block mb-2">Invite Friends</span>
-        <button onclick="openGmailInvite()" class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm font-medium bg-red-500/10 hover:bg-red-500/20 text-red-500 transition border border-red-500/20">
+        <span class="text-xs font-semibold uppercase tracking-wider text-zinc-400 block mb-2">Invite Friends</span>
+        <button onclick="openGmailInvite()" class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm font-medium bg-red-500/10 hover:bg-red-500/20 text-red-400 transition border border-red-500/20 shadow-sm">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
           Invite via Gmail
         </button>
@@ -60,15 +63,15 @@
     </div>
 
     <!-- User Profile Footer with Google Sign-In -->
-    <div class="p-3 border-t border-gray-200 dark:border-zinc-800 bg-gray-50/50 dark:bg-zinc-900/80 flex flex-col gap-2 shrink-0">
+    <div class="p-3 border-t border-zinc-800/80 bg-zinc-900/50 flex flex-col gap-2 shrink-0">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2.5 min-w-0">
-          <div id="myAvatar" class="w-9 h-9 rounded-full bg-brand-600 flex items-center justify-center text-white font-semibold text-sm shrink-0 overflow-hidden">
+          <div id="myAvatar" class="w-9 h-9 rounded-full bg-brand-600 flex items-center justify-center text-white font-semibold text-sm shrink-0 overflow-hidden shadow-sm">
             <span id="myAvatarText">YO</span>
           </div>
           <div class="min-w-0">
             <p id="myDisplayName" class="text-sm font-semibold truncate">You</p>
-            <p class="text-xs text-emerald-500 font-medium truncate">Private Local Mode</p>
+            <p class="text-xs text-emerald-400 font-medium truncate">Cloud Live Sync</p>
           </div>
         </div>
       </div>
@@ -78,43 +81,57 @@
   </aside>
 
   <!-- Main Chat Area -->
-  <main class="flex-1 flex flex-col min-w-0 bg-white dark:bg-zinc-950">
-    <header class="h-14 px-4 border-b border-gray-200 dark:border-zinc-800 flex items-center justify-between shrink-0 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-sm">
+  <main class="flex-1 flex flex-col min-w-0 bg-zinc-950">
+    <header class="h-14 px-4 border-b border-zinc-800/80 flex items-center justify-between shrink-0 bg-zinc-900/40 backdrop-blur-md">
       <div class="flex items-center gap-3 min-w-0">
-        <div class="font-bold text-xl text-gray-400">#</div>
+        <div class="font-bold text-xl text-zinc-600">#</div>
         <div class="min-w-0">
           <h1 id="roomTitle" class="font-bold text-base truncate">No Channel Selected</h1>
-          <p class="text-xs text-gray-500 dark:text-zinc-400 truncate">Create or select a channel to start chatting</p>
+          <p class="text-xs text-zinc-400 truncate">Create or select a channel to start chatting</p>
         </div>
       </div>
-      <button onclick="clearMessages()" class="px-3 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-500 text-xs font-semibold rounded-lg transition">Clear History</button>
     </header>
 
     <!-- Message Feed -->
     <div id="messageFeed" class="flex-1 overflow-y-auto px-4 py-4 space-y-3"></div>
 
     <!-- Message Composer -->
-    <div class="p-3 shrink-0 border-t border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
-      <form id="messageForm" onsubmit="handleSendMessage(event)" class="flex items-center gap-2 bg-gray-100 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl px-3 py-2">
+    <div class="p-3 shrink-0 border-t border-zinc-800/80 bg-zinc-900/40 backdrop-blur-md">
+      <form id="messageForm" onsubmit="handleSendMessage(event)" class="flex items-center gap-2 bg-zinc-900/80 border border-zinc-800 rounded-xl px-3 py-2 shadow-inner">
         <input
           id="messageInput"
           type="text"
           autocomplete="off"
           placeholder="Select a channel first..."
-          class="flex-1 bg-transparent text-sm focus:outline-none placeholder-gray-400 dark:placeholder-zinc-500"
+          class="flex-1 bg-transparent text-sm focus:outline-none placeholder-zinc-500 text-zinc-100"
         />
-        <button type="submit" class="px-4 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium rounded-lg transition">Send</button>
+        <button type="submit" class="px-4 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium rounded-lg shadow-sm transition">Send</button>
       </form>
     </div>
   </main>
 
   <script>
+    // Initialize Firebase using your exact configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyB1PJ8csqWPqZY-Ch0MQjjB96qx9QAr7t0",
+      authDomain: "pulsechat-962bc.firebaseapp.com",
+      projectId: "pulsechat-962bc",
+      storageBucket: "pulsechat-962bc.firebasestorage.app",
+      messagingSenderId: "1018381268741",
+      appId: "1:1018381268741:web:4e6d21670ddfa17c6da96c",
+      measurementId: "G-KVM5X53ZPS"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
     let channels = JSON.parse(localStorage.getItem('pulsechat_channels')) || [];
     let activeChannel = channels.length > 0 ? channels[0] : null;
     let currentUser = JSON.parse(localStorage.getItem('pulsechat_user')) || {
       name: 'You',
       picture: null
     };
+    let unsubscribeMessages = null;
 
     function startPulseChat() {
       updateUserUI();
@@ -139,15 +156,15 @@
     function renderChannels() {
       const list = document.getElementById('channelList');
       if (channels.length === 0) {
-        list.innerHTML = `<p class="text-xs text-gray-400 px-2 py-2">No channels yet. Click "+ New" to create one.</p>`;
+        list.innerHTML = `<p class="text-xs text-zinc-500 px-2 py-2">No channels yet. Click "+ New" to create one.</p>`;
         return;
       }
       let html = '';
       channels.forEach(ch => {
         const isActive = ch === activeChannel;
         const className = isActive 
-          ? "w-full flex items-center px-2.5 py-1.5 rounded-lg text-sm text-brand-600 dark:text-brand-400 bg-brand-500/10 font-semibold"
-          : "w-full flex items-center px-2.5 py-1.5 rounded-lg text-sm text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800";
+          ? "w-full flex items-center px-2.5 py-1.5 rounded-lg text-sm text-brand-400 bg-brand-500/10 font-semibold border border-brand-500/20"
+          : "w-full flex items-center px-2.5 py-1.5 rounded-lg text-sm text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200 transition";
         
         html += `
           <li>
@@ -161,7 +178,7 @@
     }
 
     function createNewChannel() {
-      let name = prompt("Enter new channel name (e.g. school, friend-talk):");
+      let name = prompt("Enter new channel name:");
       if (!name) return;
       name = name.trim().toLowerCase().replace(/\s+/g, '-');
       if (channels.includes(name)) {
@@ -181,106 +198,7 @@
       loadMessages();
     }
 
-    function getStorageKey() {
-      return 'pulsechat_messages_' + activeChannel;
-    }
-
-    function handleSendMessage(e) {
-      e.preventDefault();
-      if (!activeChannel) {
-        alert('Please select or create a channel first!');
-        return;
-      }
-      const input = document.getElementById('messageInput');
-      const text = input.value.trim();
-      if (!text) return;
-
-      const messages = JSON.parse(localStorage.getItem(getStorageKey()) || '[]');
-      messages.push({
-        senderName: currentUser.name,
-        senderPic: currentUser.picture,
-        text: text,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      });
-
-      localStorage.setItem(getStorageKey(), JSON.stringify(messages));
-      input.value = '';
-      loadMessages();
-    }
-
     function loadMessages() {
       const feed = document.getElementById('messageFeed');
       if (!activeChannel) {
-        feed.innerHTML = '<p class="text-xs text-gray-400 text-center py-6">No channel selected.</p>';
-        return;
-      }
-      const messages = JSON.parse(localStorage.getItem(getStorageKey()) || '[]');
-      
-      let html = '';
-      messages.forEach((m) => {
-        const avatarHtml = m.senderPic 
-          ? `<img src="${m.senderPic}" class="w-full h-full object-cover"/>` 
-          : `<span class="text-xs">${m.senderName.slice(0, 2).toUpperCase()}</span>`;
-
-        html += `
-          <div class="flex items-start gap-3 px-2 py-1">
-            <div class="w-8 h-8 rounded-full bg-brand-600 text-white font-bold text-xs flex items-center justify-center shrink-0 overflow-hidden">${avatarHtml}</div>
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="font-semibold text-sm">${m.senderName}</span>
-                <span class="text-xs text-gray-400">${m.time}</span>
-              </div>
-              <p class="text-sm text-gray-800 dark:text-zinc-200">${m.text}</p>
-            </div>
-          </div>
-        `;
-      });
-      feed.innerHTML = html || '<p class="text-xs text-gray-400 text-center py-6">No messages in #' + activeChannel + '.</p>';
-      feed.scrollTop = feed.scrollHeight;
-    }
-
-    function clearMessages() {
-      if (!activeChannel) return;
-      if (confirm('Clear all messages in #' + activeChannel + '?')) {
-        localStorage.removeItem(getStorageKey());
-        loadMessages();
-      }
-    }
-
-    function openGmailInvite() {
-      const subject = encodeURIComponent("Join me on PulseChat!");
-      const body = encodeURIComponent("Hey! Check out my private chat app here: " + window.location.href);
-      window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`, '_blank');
-    }
-
-    function initGoogleAuth() {
-      google.accounts.id.initialize({
-        client_id: "25253582318-iqevtg253cplo4am4i1qdj0sevoasq6s.apps.googleusercontent.com",
-        callback: handleCredentialResponse
-      });
-      google.accounts.id.renderButton(
-        document.getElementById("googleSignInBtn"),
-        { theme: "outline", size: "medium", width: "240" }
-      );
-    }
-
-    function handleCredentialResponse(response) {
-      const base64Url = response.credential.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
-      const profile = JSON.parse(jsonPayload);
-
-      currentUser = {
-        name: profile.name,
-        picture: profile.picture
-      };
-
-      localStorage.setItem('pulsechat_user', JSON.stringify(currentUser));
-      updateUserUI();
-      alert('Successfully signed in as ' + currentUser.name + '!');
-    }
-
-    window.onload = startPulseChat;
-  </script>
-</body>
-</html>
+        feed.innerHTML = '<p class="text-xs text-
