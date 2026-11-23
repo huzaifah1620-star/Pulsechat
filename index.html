@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PulseChat Private — School & Friends</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Identity Services SDK -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -65,17 +67,21 @@
       </div>
     </div>
 
-    <!-- User Profile Footer -->
-    <div class="p-3 border-t border-gray-200 dark:border-zinc-800 bg-gray-50/50 dark:bg-zinc-900/80 flex items-center justify-between shrink-0">
-      <div class="flex items-center gap-2.5 min-w-0">
-        <div id="myAvatar" class="w-9 h-9 rounded-full bg-brand-600 flex items-center justify-center text-white font-semibold text-sm shrink-0">
-          <span id="myAvatarText">YO</span>
-        </div>
-        <div class="min-w-0">
-          <p id="myDisplayName" class="text-sm font-semibold truncate">You</p>
-          <p class="text-xs text-emerald-500 font-medium truncate">Private Local Mode</p>
+    <!-- User Profile Footer with Google Sign-In -->
+    <div class="p-3 border-t border-gray-200 dark:border-zinc-800 bg-gray-50/50 dark:bg-zinc-900/80 flex flex-col gap-2 shrink-0">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div id="myAvatar" class="w-9 h-9 rounded-full bg-brand-600 flex items-center justify-center text-white font-semibold text-sm shrink-0 overflow-hidden">
+            <span id="myAvatarText">YO</span>
+          </div>
+          <div class="min-w-0">
+            <p id="myDisplayName" class="text-sm font-semibold truncate">You</p>
+            <p class="text-xs text-emerald-500 font-medium truncate">Private Local Mode</p>
+          </div>
         </div>
       </div>
+      <!-- Google Sign In Button Container -->
+      <div id="googleSignInBtn" class="flex justify-center w-full mt-1"></div>
     </div>
   </aside>
 
@@ -112,15 +118,51 @@
 
   <script>
     let activeChannel = 'school';
-    let currentUser = {
+    let currentUser = JSON.parse(localStorage.getItem('pulsechat_user')) || {
       name: 'You',
-      color: 'bg-brand-600'
+      picture: null
     };
 
     function startPulseChat() {
-      document.getElementById('myDisplayName').textContent = currentUser.name;
-      document.getElementById('myAvatarText').textContent = currentUser.name.slice(0, 2).toUpperCase();
+      updateUserUI();
       loadMessages();
+      initGoogleAuth();
+    }
+
+    function updateUserUI() {
+      document.getElementById('myDisplayName').textContent = currentUser.name;
+      if (currentUser.picture) {
+        document.getElementById('myAvatar').innerHTML = `<img src="${currentUser.picture}" class="w-full h-full object-cover"/>`;
+      } else {
+        document.getElementById('myAvatarText').textContent = currentUser.name.slice(0, 2).toUpperCase();
+      }
+    }
+
+    function initGoogleAuth() {
+      google.accounts.id.initialize({
+        client_id: "25253582318-iqevtg253cplo4am4i1qdj0sevoasq6s.apps.googleusercontent.com",
+        callback: handleCredentialResponse
+      });
+      google.accounts.id.renderButton(
+        document.getElementById("googleSignInBtn"),
+        { theme: "outline", size: "medium", width: "240" }
+      );
+    }
+
+    function handleCredentialResponse(response) {
+      const base64Url = response.credential.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+      const profile = JSON.parse(jsonPayload);
+
+      currentUser = {
+        name: profile.name,
+        picture: profile.picture
+      };
+
+      localStorage.setItem('pulsechat_user', JSON.stringify(currentUser));
+      updateUserUI();
+      alert('Successfully signed in as ' + currentUser.name + '!');
     }
 
     function selectChannel(ch) {
@@ -150,6 +192,7 @@
       const messages = JSON.parse(localStorage.getItem(getStorageKey()) || '[]');
       messages.push({
         senderName: currentUser.name,
+        senderPic: currentUser.picture,
         text: text,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       });
@@ -165,9 +208,13 @@
       
       let html = '';
       messages.forEach((m) => {
+        const avatarHtml = m.senderPic 
+          ? `<img src="${m.senderPic}" class="w-full h-full object-cover"/>` 
+          : `<span class="text-xs">${m.senderName.slice(0, 2).toUpperCase()}</span>`;
+
         html += `
           <div class="flex items-start gap-3 px-2 py-1">
-            <div class="w-8 h-8 rounded-full bg-brand-600 text-white font-bold text-xs flex items-center justify-center shrink-0">YO</div>
+            <div class="w-8 h-8 rounded-full bg-brand-600 text-white font-bold text-xs flex items-center justify-center shrink-0 overflow-hidden">${avatarHtml}</div>
             <div>
               <div class="flex items-center gap-2">
                 <span class="font-semibold text-sm">${m.senderName}</span>
