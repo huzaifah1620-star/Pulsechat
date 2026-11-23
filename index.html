@@ -35,7 +35,7 @@
       </div>
     </div>
 
-    <!-- Channels List -->
+    <!-- Channels List & Invite -->
     <div class="flex-1 overflow-y-auto px-3 py-4 space-y-6">
       <div>
         <div class="px-2 mb-1.5 flex items-center justify-between">
@@ -53,6 +53,15 @@
             </button>
           </li>
         </ul>
+      </div>
+
+      <!-- Gmail Invite Section -->
+      <div class="px-2">
+        <span class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-zinc-400 block mb-2">Invite Friends</span>
+        <button onclick="openGmailInvite()" class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm font-medium bg-red-500/10 hover:bg-red-500/20 text-red-500 transition border border-red-500/20">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+          Invite via Gmail
+        </button>
       </div>
     </div>
 
@@ -178,6 +187,12 @@
         localStorage.removeItem(getStorageKey());
         loadMessages();
       }
+    }
+
+    function openGmailInvite() {
+      const subject = encodeURIComponent("Join me on PulseChat!");
+      const body = encodeURIComponent("Hey! Check out my private chat app here: " + window.location.href);
+      window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`, '_blank');
     }
 
     window.onload = startPulseChat;
