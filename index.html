@@ -87,4 +87,149 @@
     </div>
 
     <!-- User Profile Footer -->
-    <div class="p-3 border-t border-gray-20
+    <div class="p-3 border-t border-gray-200 dark:border-zinc-800 bg-gray-50/50 dark:bg-zinc-900/80 flex items-center justify-between shrink-0">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div id="myAvatar" class="w-9 h-9 rounded-full bg-brand-600 flex items-center justify-center text-white font-semibold text-sm shrink-0">
+          <span id="myAvatarText">YO</span>
+        </div>
+        <div class="min-w-0">
+          <p id="myDisplayName" class="text-sm font-semibold truncate">You</p>
+          <p class="text-xs text-emerald-500 font-medium truncate">Cloud Live Sync</p>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Chat Area -->
+  <main class="flex-1 flex flex-col min-w-0 bg-white dark:bg-zinc-950">
+    <header class="h-14 px-4 border-b border-gray-200 dark:border-zinc-800 flex items-center justify-between shrink-0 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-sm">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="font-bold text-xl text-gray-400">#</div>
+        <div class="min-w-0">
+          <h1 id="roomTitle" class="font-bold text-base truncate">general</h1>
+          <p class="text-xs text-gray-500 dark:text-zinc-400 truncate">Real-time cloud chat synced across the internet</p>
+        </div>
+      </div>
+    </header>
+
+    <!-- Message Feed -->
+    <div id="messageFeed" class="flex-1 overflow-y-auto px-4 py-4 space-y-3"></div>
+
+    <!-- Message Composer -->
+    <div class="p-3 shrink-0 border-t border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+      <form id="messageForm" onsubmit="handleSendMessage(event)" class="flex items-center gap-2 bg-gray-100 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl px-3 py-2">
+        <input
+          id="messageInput"
+          type="text"
+          autocomplete="off"
+          placeholder="Type a message to your friends..."
+          class="flex-1 bg-transparent text-sm focus:outline-none placeholder-gray-400 dark:placeholder-zinc-500"
+        />
+        <button type="submit" class="px-4 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium rounded-lg transition">Send</button>
+      </form>
+    </div>
+  </main>
+
+  <!-- Invite Modal -->
+  <div id="inviteModal" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
+    <div class="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+      <h2 class="text-lg font-bold mb-2">Invite Your Friends</h2>
+      <p class="text-xs text-gray-500 dark:text-zinc-400 mb-4">Share your hosted link with anyone. They will connect instantly to your cloud chat!</p>
+      <div class="flex gap-2">
+        <input id="inviteLinkInput" type="text" readonly class="flex-1 px-3 py-2 text-sm rounded-lg bg-gray-100 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 font-mono text-xs" />
+        <button onclick="copyInviteLink()" class="px-4 py-2 bg-brand-600 text-white text-sm rounded-lg">Copy</button>
+      </div>
+      <div class="mt-4 text-right">
+        <button onclick="closeInviteModal()" class="px-4 py-1.5 text-sm bg-gray-200 dark:bg-zinc-800 rounded-lg">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let activeChannel = 'general';
+    let currentUser = {
+      name: localStorage.getItem('pulsechat_name') || 'User_' + Math.floor(Math.random() * 900 + 100),
+      color: 'bg-brand-600'
+    };
+
+    function startPulseChat() {
+      document.getElementById('myDisplayName').textContent = currentUser.name;
+      document.getElementById('myAvatarText').textContent = currentUser.name.slice(0, 2).toUpperCase();
+      loadMessages();
+    }
+    window.startPulseChat = startPulseChat;
+
+    function selectChannel(ch) {
+      activeChannel = ch;
+      document.getElementById('roomTitle').textContent = ch;
+      ['general', 'gaming', 'random'].forEach(c => {
+        const btn = document.getElementById(`btn-${c}`);
+        if (c === ch) {
+          btn.className = "w-full flex items-center px-2.5 py-1.5 rounded-lg text-sm text-brand-600 dark:text-brand-400 bg-brand-500/10 font-semibold";
+        } else {
+          btn.className = "w-full flex items-center px-2.5 py-1.5 rounded-lg text-sm text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800";
+        }
+      });
+      loadMessages();
+    }
+
+    async function handleSendMessage(e) {
+      e.preventDefault();
+      const input = document.getElementById('messageInput');
+      const text = input.value.trim();
+      if (!text || !window.db) return;
+
+      try {
+        await window.firebaseFns.addDoc(window.firebaseFns.collection(window.db, 'channels', activeChannel, 'messages'), {
+          senderName: currentUser.name,
+          senderColor: currentUser.color,
+          text: text,
+          timestamp: window.firebaseFns.serverTimestamp()
+        });
+        input.value = '';
+      } catch (err) {
+        alert('Error sending message. Make sure Firestore is enabled in your Firebase console!');
+      }
+    }
+
+    function loadMessages() {
+      if (!window.db) return;
+      const feed = document.getElementById('messageFeed');
+      const q = window.firebaseFns.query(window.firebaseFns.collection(window.db, 'channels', activeChannel, 'messages'), window.firebaseFns.orderBy('timestamp', 'asc'));
+      
+      window.firebaseFns.onSnapshot(q, (snapshot) => {
+        let html = '';
+        snapshot.forEach((doc) => {
+          const m = doc.data();
+          const initials = m.senderName ? m.senderName.slice(0, 2).toUpperCase() : 'US';
+          html += `
+            <div class="flex items-start gap-3 px-2 py-1">
+              <div class="w-8 h-8 rounded-full bg-brand-600 text-white font-bold text-xs flex items-center justify-center shrink-0">${initials}</div>
+              <div>
+                <div class="flex items-center gap-2"><span class="font-semibold text-sm">${m.senderName}</span></div>
+                <p class="text-sm text-gray-800 dark:text-zinc-200">${m.text}</p>
+              </div>
+            </div>
+          `;
+        });
+        feed.innerHTML = html || '<p class="text-xs text-gray-400 text-center py-6">No messages in #' + activeChannel + '. Say hello!</p>';
+        feed.scrollTop = feed.scrollHeight;
+      });
+    }
+
+    function openInviteModal() {
+      document.getElementById('inviteLinkInput').value = window.location.href;
+      document.getElementById('inviteModal').classList.remove('hidden');
+      document.getElementById('inviteModal').classList.add('flex');
+    }
+    function closeInviteModal() {
+      document.getElementById('inviteModal').classList.add('hidden');
+      document.getElementById('inviteModal').classList.remove('flex');
+    }
+    function copyInviteLink() {
+      navigator.clipboard.writeText(window.location.href);
+      alert('Link copied to clipboard!');
+    }
+  </script>
+</body>
+</html>
