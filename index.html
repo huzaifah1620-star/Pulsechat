@@ -31,13 +31,20 @@
 </head>
 <body class="bg-gradient-to-br from-zinc-950 via-zinc-900 to-black text-gray-100 h-screen overflow-hidden flex select-none">
 
-  <!-- Sidebar -->
-  <aside id="sidebar" class="fixed md:static inset-y-0 left-0 z-30 w-72 bg-zinc-900/90 backdrop-blur-md border-r border-zinc-800/80 flex flex-col transform -translate-x-full md:translate-x-0 transition-transform duration-200 ease-in-out shadow-xl">
+  <!-- Dark Overlay when Sidebar is open on Mobile -->
+  <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/60 z-20 hidden md:hidden backdrop-blur-sm"></div>
+
+  <!-- Collapsible Sidebar -->
+  <aside id="sidebar" class="fixed md:static inset-y-0 left-0 z-30 w-72 bg-zinc-900/95 backdrop-blur-md border-r border-zinc-800/80 flex flex-col transform -translate-x-full md:translate-x-0 transition-all duration-200 ease-in-out shadow-xl shrink-0 overflow-hidden">
     <div class="h-14 px-4 border-b border-zinc-800/80 flex items-center justify-between shrink-0">
-      <div class="flex items-center gap-2.5">
-        <div class="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white font-bold shadow-sm">🔒</div>
-        <span class="font-bold text-lg tracking-tight">PulseChat Private</span>
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div class="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white font-bold shadow-sm shrink-0">🔒</div>
+        <span class="font-bold text-lg tracking-tight truncate">PulseChat Private</span>
       </div>
+      <!-- Close button inside sidebar for mobile -->
+      <button onclick="toggleSidebar()" class="md:hidden p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
     </div>
 
     <!-- Channels List & Creator -->
@@ -56,8 +63,8 @@
       <div class="px-2">
         <span class="text-xs font-semibold uppercase tracking-wider text-zinc-400 block mb-2">Invite Friends</span>
         <button onclick="openGmailInvite()" class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm font-medium bg-red-500/10 hover:bg-red-500/20 text-red-400 transition border border-red-500/20 shadow-sm">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-          Invite via Gmail
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+          <span class="truncate">Invite via Gmail</span>
         </button>
       </div>
     </div>
@@ -76,9 +83,9 @@
         </div>
       </div>
 
-      <!-- Admin Clear Chats Button (Hidden by default, shown for Admin) -->
+      <!-- Admin-Only Clear Chats Button -->
       <button id="clearChatsBtn" onclick="clearAllChats()" class="hidden w-full items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-800 hover:bg-red-500/20 text-zinc-300 hover:text-red-400 transition border border-zinc-700/60 shadow-sm">
-        🗑️ Clear All Chats
+        🗑️ Clear All Chats (Admin Only)
       </button>
 
       <!-- Google Sign In Button Container -->
@@ -90,10 +97,14 @@
   <main class="flex-1 flex flex-col min-w-0 bg-zinc-950">
     <header class="h-14 px-4 border-b border-zinc-800/80 flex items-center justify-between shrink-0 bg-zinc-900/40 backdrop-blur-md">
       <div class="flex items-center gap-3 min-w-0">
+        <!-- Universal Collapse/Expand Sidebar Button -->
+        <button onclick="toggleSidebar()" title="Toggle Sidebar" class="p-2 -ml-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800/80 transition shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
         <div class="font-bold text-xl text-zinc-600">#</div>
         <div class="min-w-0">
           <h1 id="roomTitle" class="font-bold text-base truncate">Locked</h1>
-          <p class="text-xs text-zinc-400 truncate">Enter passcode upon loading</p>
+          <p class="text-xs text-zinc-400 truncate">Private encrypted room</p>
         </div>
       </div>
     </header>
@@ -108,7 +119,7 @@
           id="messageInput"
           type="text"
           autocomplete="off"
-          placeholder="Locked..."
+          placeholder="Type a message..."
           class="flex-1 bg-transparent text-sm focus:outline-none placeholder-zinc-500 text-zinc-100"
         />
         <button type="submit" class="px-4 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium rounded-lg shadow-sm transition">Send</button>
@@ -130,8 +141,11 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
+    // 👉 YOUR SECRET PASSWORD:
     const SECRET_PASSCODE = "mysecret123";
-    const ADMIN_EMAIL = "huzaifah1620@gmail.com"; // Replace with your admin email
+    
+    // 👉 PUT YOUR EXACT GOOGLE EMAIL HERE SO ONLY YOU GET ADMIN & CLEAR CHAT:
+    const ADMIN_EMAIL = "your-email@gmail.com";
 
     let channels = JSON.parse(localStorage.getItem('pulsechat_channels')) || [];
     let activeChannel = channels.length > 0 ? channels[0] : null;
@@ -141,9 +155,42 @@
       email: null
     };
     let unsubscribeMessages = null;
+    let isDesktopCollapsed = false;
+
+    function isAdmin() {
+      return currentUser.email && currentUser.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+    }
+
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      const isMobile = window.innerWidth < 768;
+
+      if (isMobile) {
+        // Slide drawer in/out on mobile
+        const isClosed = sidebar.classList.contains('-translate-x-full');
+        if (isClosed) {
+          sidebar.classList.remove('-translate-x-full');
+          overlay.classList.remove('hidden');
+        } else {
+          sidebar.classList.add('-translate-x-full');
+          overlay.classList.add('hidden');
+        }
+      } else {
+        // Collapse/expand width smoothly on desktop
+        isDesktopCollapsed = !isDesktopCollapsed;
+        if (isDesktopCollapsed) {
+          sidebar.classList.remove('md:w-72', 'w-72');
+          sidebar.classList.add('md:w-0', 'w-0', 'border-none');
+        } else {
+          sidebar.classList.remove('md:w-0', 'w-0', 'border-none');
+          sidebar.classList.add('md:w-72', 'w-72');
+        }
+      }
+    }
 
     function startPulseChat() {
-      if (currentUser.email !== ADMIN_EMAIL) {
+      if (!isAdmin()) {
         let enteredPass = prompt("Enter the Secret Passcode to unlock PulseChat:");
         if (enteredPass !== SECRET_PASSCODE) {
           document.body.innerHTML = `
@@ -169,12 +216,18 @@
 
     function updateUserUI() {
       document.getElementById('myDisplayName').textContent = currentUser.name;
-      if (currentUser.email === ADMIN_EMAIL) {
+      const clearBtn = document.getElementById('clearChatsBtn');
+
+      if (isAdmin()) {
         document.getElementById('myRoleText').textContent = "👑 Admin";
         document.getElementById('myRoleText').className = "text-xs text-brand-400 font-bold truncate";
-        // Show clear chats button for admin
-        document.getElementById('clearChatsBtn').style.display = 'flex';
+        clearBtn.style.display = 'flex';
+      } else {
+        document.getElementById('myRoleText').textContent = "Secure Mode";
+        document.getElementById('myRoleText').className = "text-xs text-emerald-400 font-medium truncate";
+        clearBtn.style.display = 'none';
       }
+
       if (currentUser.picture) {
         document.getElementById('myAvatar').innerHTML = `<img src="${currentUser.picture}" class="w-full h-full object-cover"/>`;
       } else {
@@ -197,7 +250,7 @@
         
         html += `
           <li>
-            <button onclick="selectChannel('${ch}')" id="btn-${ch}" class="${className}">
+            <button onclick="selectChannel('${ch}'); if(window.innerWidth < 768) toggleSidebar();" id="btn-${ch}" class="${className}">
               # ${ch}
             </button>
           </li>
@@ -207,7 +260,7 @@
     }
 
     function createNewChannel() {
-      if (currentUser.email !== ADMIN_EMAIL) {
+      if (!isAdmin()) {
         let pass = prompt("Enter the Secret Passcode to create a channel:");
         if (pass !== SECRET_PASSCODE) {
           alert("Incorrect passcode!");
@@ -237,7 +290,7 @@
     function loadMessages() {
       const feed = document.getElementById('messageFeed');
       if (!activeChannel) {
-        feed.innerHTML = '<p class="text-xs text-zinc-500 text-center py-6">No channel selected.</p>';
+        feed.innerHTML = '<p class="text-xs text-zinc-500 text-center py-6">No channel selected. Open sidebar to create one.</p>';
         return;
       }
 
@@ -298,10 +351,14 @@
     }
 
     async function clearAllChats() {
-      if (!confirm("Are you sure you want to clear all channels and message history?")) return;
+      if (!isAdmin()) {
+        alert("Access Denied: Only the Admin can clear chats.");
+        return;
+      }
+
+      if (!confirm("Are you sure you want to clear all messages in #" + (activeChannel || "this channel") + " and reset channels?")) return;
       
       try {
-        // Delete messages in active channel from Firestore
         if (activeChannel) {
           const snapshot = await db.collection('channels').doc(activeChannel).collection('messages').get();
           const batch = db.batch();
@@ -309,7 +366,6 @@
           await batch.commit();
         }
 
-        // Clear local storage channels
         localStorage.removeItem('pulsechat_channels');
         channels = [];
         activeChannel = null;
