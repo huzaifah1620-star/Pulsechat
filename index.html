@@ -84,9 +84,9 @@
         </div>
       </div>
 
-      <!-- Admin-Only Clear Chats Button -->
-      <button id="clearChatsBtn" onclick="clearAllChats()" class="hidden w-full items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-800 hover:bg-red-500/20 text-zinc-300 hover:text-red-400 transition border border-zinc-700/60 shadow-sm">
-        🗑️ Clear All Chats (Admin Only)
+      <!-- Admin-Only Clear Messages Button -->
+      <button id="clearChatsBtn" onclick="clearCurrentChannelMessages()" class="hidden w-full items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-800 hover:bg-red-500/20 text-zinc-300 hover:text-red-400 transition border border-zinc-700/60 shadow-sm">
+        🗑️ Clear Messages (Admin Only)
       </button>
 
       <!-- Google Sign In Button Container -->
@@ -143,7 +143,7 @@
     const db = firebase.firestore();
 
     const SECRET_PASSCODE = "mysecret123";
-    const ADMIN_EMAIL = "huzaifah1620@gmail.com"; // 👉 Replace with your exact Google email
+    const ADMIN_EMAIL = "your-email@gmail.com"; // 👉 Replace with your exact Google email
 
     let channels = JSON.parse(localStorage.getItem('pulsechat_channels')) || [];
     let activeChannel = channels.length > 0 ? channels[0] : null;
@@ -219,12 +219,12 @@
         document.getElementById('myRoleText').textContent = "👑 Admin";
         document.getElementById('myRoleText').className = "text-xs text-brand-400 font-bold truncate";
         clearBtn.style.display = 'flex';
-        newChannelBtn.style.display = 'inline-block'; // Show + New button only for Admin
+        newChannelBtn.style.display = 'inline-block';
       } else {
         document.getElementById('myRoleText').textContent = "Secure Mode";
         document.getElementById('myRoleText').className = "text-xs text-emerald-400 font-medium truncate";
         clearBtn.style.display = 'none';
-        newChannelBtn.style.display = 'none'; // Hide + New button for regular users
+        newChannelBtn.style.display = 'none';
       }
 
       if (currentUser.picture) {
@@ -259,7 +259,6 @@
     }
 
     function createNewChannel() {
-      // Strict Admin check
       if (!isAdmin()) {
         alert("Access Denied: Only the Admin can create new channels.");
         return;
@@ -347,32 +346,30 @@
       });
     }
 
-    async function clearAllChats() {
+    async function clearCurrentChannelMessages() {
       if (!isAdmin()) {
-        alert("Access Denied: Only the Admin can clear chats.");
+        alert("Access Denied: Only the Admin can clear messages.");
         return;
       }
 
-      if (!confirm("Are you sure you want to clear all messages in #" + (activeChannel || "this channel") + " and reset channels?")) return;
+      if (!activeChannel) {
+        alert("Please select a channel first!");
+        return;
+      }
+
+      if (!confirm("Are you sure you want to clear all messages in #" + activeChannel + "?")) return;
       
       try {
-        if (activeChannel) {
-          const snapshot = await db.collection('channels').doc(activeChannel).collection('messages').get();
-          const batch = db.batch();
-          snapshot.docs.forEach((doc) => batch.delete(doc.ref));
-          await batch.commit();
-        }
+        const snapshot = await db.collection('channels').doc(activeChannel).collection('messages').get();
+        const batch = db.batch();
+        snapshot.docs.forEach((doc) => batch.delete(doc.ref));
+        await batch.commit();
 
-        localStorage.removeItem('pulsechat_channels');
-        channels = [];
-        activeChannel = null;
-        renderChannels();
-        document.getElementById('messageFeed').innerHTML = '<p class="text-xs text-zinc-500 text-center py-6">All chats cleared.</p>';
-        document.getElementById('roomTitle').textContent = 'No Channel Selected';
-        alert("All chats have been cleared successfully!");
+        loadMessages();
+        alert("Messages in #" + activeChannel + " have been cleared successfully!");
       } catch (err) {
         console.error(err);
-        alert("Error clearing chats. Check console.");
+        alert("Error clearing messages. Check console.");
       }
     }
 
