@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PulseChat Live — Cloud Real-Time Chat</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Firebase SDKs -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyB1PJ8csqWPqZY-Ch0MQjjB96qx9QAr7t0",
+      authDomain: "pulsechat-962bc.firebaseapp.com",
+      projectId: "pulsechat-962bc",
+      storageBucket: "pulsechat-962bc.firebasestorage.app",
+      messagingSenderId: "1018381268741",
+      appId: "1:1018381268741:web:4e6d21670ddfa17c6da96c",
+      measurementId: "G-KVM5X53ZPS"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    window.db = db;
+    window.firebaseFns = { collection, addDoc, onSnapshot, query, orderBy, serverTimestamp };
+    
+    if (window.startPulseChat) window.startPulseChat();
+  </script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.3); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(156, 163, 175, 0.5); }
+  </style>
+</head>
+<body class="bg-gray-100 dark:bg-zinc-950 text-gray-900 dark:text-zinc-100 h-screen overflow-hidden flex select-none">
+
+  <!-- Sidebar -->
+  <aside id="sidebar" class="fixed md:static inset-y-0 left-0 z-30 w-72 bg-white dark:bg-zinc-900 border-r border-gray-200 dark:border-zinc-800 flex flex-col transform -translate-x-full md:translate-x-0 transition-transform duration-200 ease-in-out">
+    <div class="h-14 px-4 border-b border-gray-200 dark:border-zinc-800 flex items-center justify-between shrink-0">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white font-bold shadow-sm">⚡</div>
+        <span class="font-bold text-lg tracking-tight">PulseChat Live</span>
+      </div>
+      <button onclick="openInviteModal()" title="Invite Friends" class="p-1.5 rounded-lg text-brand-600 dark:text-brand-400 hover:bg-indigo-50 dark:hover:bg-zinc-800 transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+      </button>
+    </div>
+
+    <!-- Channels List -->
+    <div class="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+      <div>
+        <div class="px-2 mb-1.5 flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-zinc-400">Channels</span>
+        </div>
+        <ul id="channelList" class="space-y-0.5">
+          <li>
+            <button onclick="selectChannel('general')" id="btn-general" class="w-full flex items-center px-2.5 py-1.5 rounded-lg text-sm text-brand-600 dark:text-brand-400 bg-brand-500/10 font-semibold">
+              # general
+            </button>
+          </li>
+          <li>
+            <button onclick="selectChannel('gaming')" id="btn-gaming" class="w-full flex items-center px-2.5 py-1.5 rounded-lg text-sm text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800">
+              # gaming
+            </button>
+          </li>
+          <li>
+            <button onclick="selectChannel('random')" id="btn-random" class="w-full flex items-center px-2.5 py-1.5 rounded-lg text-sm text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800">
+              # random
+            </button>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- User Profile Footer -->
+    <div class="p-3 border-t border-gray-20
