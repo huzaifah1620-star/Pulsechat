@@ -75,6 +75,12 @@
           </div>
         </div>
       </div>
+
+      <!-- Admin Clear Chats Button (Hidden by default, shown for Admin) -->
+      <button id="clearChatsBtn" onclick="clearAllChats()" class="hidden w-full items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-800 hover:bg-red-500/20 text-zinc-300 hover:text-red-400 transition border border-zinc-700/60 shadow-sm">
+        🗑️ Clear All Chats
+      </button>
+
       <!-- Google Sign In Button Container -->
       <div id="googleSignInBtn" class="flex justify-center w-full mt-1 overflow-hidden"></div>
     </div>
@@ -124,11 +130,8 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // 👉 CHANGE YOUR PASSWORD HERE:
     const SECRET_PASSCODE = "mysecret123";
-    
-    // 👉 PUT YOUR EXACT GOOGLE EMAIL HERE TO BE ADMIN AUTOMATICALLY:
-    const ADMIN_EMAIL = "your-email@gmail.com";
+    const ADMIN_EMAIL = "your-email@gmail.com"; // Replace with your admin email
 
     let channels = JSON.parse(localStorage.getItem('pulsechat_channels')) || [];
     let activeChannel = channels.length > 0 ? channels[0] : null;
@@ -169,6 +172,8 @@
       if (currentUser.email === ADMIN_EMAIL) {
         document.getElementById('myRoleText').textContent = "👑 Admin";
         document.getElementById('myRoleText').className = "text-xs text-brand-400 font-bold truncate";
+        // Show clear chats button for admin
+        document.getElementById('clearChatsBtn').style.display = 'flex';
       }
       if (currentUser.picture) {
         document.getElementById('myAvatar').innerHTML = `<img src="${currentUser.picture}" class="w-full h-full object-cover"/>`;
@@ -290,6 +295,32 @@
         console.error("Error sending message: ", error);
         alert("Failed to send message.");
       });
+    }
+
+    async function clearAllChats() {
+      if (!confirm("Are you sure you want to clear all channels and message history?")) return;
+      
+      try {
+        // Delete messages in active channel from Firestore
+        if (activeChannel) {
+          const snapshot = await db.collection('channels').doc(activeChannel).collection('messages').get();
+          const batch = db.batch();
+          snapshot.docs.forEach((doc) => batch.delete(doc.ref));
+          await batch.commit();
+        }
+
+        // Clear local storage channels
+        localStorage.removeItem('pulsechat_channels');
+        channels = [];
+        activeChannel = null;
+        renderChannels();
+        document.getElementById('messageFeed').innerHTML = '<p class="text-xs text-zinc-500 text-center py-6">All chats cleared.</p>';
+        document.getElementById('roomTitle').textContent = 'No Channel Selected';
+        alert("All chats have been cleared successfully!");
+      } catch (err) {
+        console.error(err);
+        alert("Error clearing chats. Check console.");
+      }
     }
 
     function escapeHtml(text) {
