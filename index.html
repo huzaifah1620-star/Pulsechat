@@ -52,7 +52,8 @@
       <div>
         <div class="px-2 mb-1.5 flex items-center justify-between">
           <span class="text-xs font-semibold uppercase tracking-wider text-zinc-400">Channels</span>
-          <button onclick="createNewChannel()" class="text-xs text-brand-400 hover:text-brand-300 font-bold px-1.5 py-0.5 rounded bg-brand-500/10 transition">+ New</button>
+          <!-- Admin-Only New Channel Button -->
+          <button id="newChannelBtn" onclick="createNewChannel()" class="hidden text-xs text-brand-400 hover:text-brand-300 font-bold px-1.5 py-0.5 rounded bg-brand-500/10 transition">+ New</button>
         </div>
         <ul id="channelList" class="space-y-0.5">
           <!-- Dynamically loaded channels appear here -->
@@ -141,11 +142,8 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // 👉 YOUR SECRET PASSWORD:
     const SECRET_PASSCODE = "mysecret123";
-    
-    // 👉 PUT YOUR EXACT GOOGLE EMAIL HERE SO ONLY YOU GET ADMIN & CLEAR CHAT:
-    const ADMIN_EMAIL = "huzaifah1620@gmail.com";
+    const ADMIN_EMAIL = "your-email@gmail.com"; // 👉 Replace with your exact Google email
 
     let channels = JSON.parse(localStorage.getItem('pulsechat_channels')) || [];
     let activeChannel = channels.length > 0 ? channels[0] : null;
@@ -167,7 +165,6 @@
       const isMobile = window.innerWidth < 768;
 
       if (isMobile) {
-        // Slide drawer in/out on mobile
         const isClosed = sidebar.classList.contains('-translate-x-full');
         if (isClosed) {
           sidebar.classList.remove('-translate-x-full');
@@ -177,7 +174,6 @@
           overlay.classList.add('hidden');
         }
       } else {
-        // Collapse/expand width smoothly on desktop
         isDesktopCollapsed = !isDesktopCollapsed;
         if (isDesktopCollapsed) {
           sidebar.classList.remove('md:w-72', 'w-72');
@@ -217,15 +213,18 @@
     function updateUserUI() {
       document.getElementById('myDisplayName').textContent = currentUser.name;
       const clearBtn = document.getElementById('clearChatsBtn');
+      const newChannelBtn = document.getElementById('newChannelBtn');
 
       if (isAdmin()) {
         document.getElementById('myRoleText').textContent = "👑 Admin";
         document.getElementById('myRoleText').className = "text-xs text-brand-400 font-bold truncate";
         clearBtn.style.display = 'flex';
+        newChannelBtn.style.display = 'inline-block'; // Show + New button only for Admin
       } else {
         document.getElementById('myRoleText').textContent = "Secure Mode";
         document.getElementById('myRoleText').className = "text-xs text-emerald-400 font-medium truncate";
         clearBtn.style.display = 'none';
+        newChannelBtn.style.display = 'none'; // Hide + New button for regular users
       }
 
       if (currentUser.picture) {
@@ -238,7 +237,7 @@
     function renderChannels() {
       const list = document.getElementById('channelList');
       if (channels.length === 0) {
-        list.innerHTML = `<p class="text-xs text-zinc-500 px-2 py-2">No channels unlocked. Click "+ New".</p>`;
+        list.innerHTML = `<p class="text-xs text-zinc-500 px-2 py-2">No channels created yet.</p>`;
         return;
       }
       let html = '';
@@ -260,12 +259,10 @@
     }
 
     function createNewChannel() {
+      // Strict Admin check
       if (!isAdmin()) {
-        let pass = prompt("Enter the Secret Passcode to create a channel:");
-        if (pass !== SECRET_PASSCODE) {
-          alert("Incorrect passcode!");
-          return;
-        }
+        alert("Access Denied: Only the Admin can create new channels.");
+        return;
       }
 
       let name = prompt("Enter new channel name:");
@@ -290,7 +287,7 @@
     function loadMessages() {
       const feed = document.getElementById('messageFeed');
       if (!activeChannel) {
-        feed.innerHTML = '<p class="text-xs text-zinc-500 text-center py-6">No channel selected. Open sidebar to create one.</p>';
+        feed.innerHTML = '<p class="text-xs text-zinc-500 text-center py-6">No channel selected.</p>';
         return;
       }
 
@@ -329,7 +326,7 @@
     function handleSendMessage(e) {
       e.preventDefault();
       if (!activeChannel) {
-        alert('Please select or create a channel first!');
+        alert('Please select a channel first!');
         return;
       }
       const input = document.getElementById('messageInput');
@@ -385,8 +382,9 @@
     }
 
     function openGmailInvite() {
+      const roomText = activeChannel ? ` in #${activeChannel}` : '';
       const subject = encodeURIComponent("Join me on PulseChat!");
-      const body = encodeURIComponent("Hey! Check out my private chat app here: " + window.location.href + " (Passcode: " + SECRET_PASSCODE + ")");
+      const body = encodeURIComponent("Hey! Check out our private chat" + roomText + " here: " + window.location.href + " (Passcode: " + SECRET_PASSCODE + ")");
       window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`, '_blank');
     }
 
