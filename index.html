@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PulseChat Private — School & Friends</title>
+  <title>PulseChat Private</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Google Identity Services SDK -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -37,23 +37,15 @@
       </div>
     </div>
 
-    <!-- Channels List & Invite -->
+    <!-- Channels List & Creator -->
     <div class="flex-1 overflow-y-auto px-3 py-4 space-y-6">
       <div>
         <div class="px-2 mb-1.5 flex items-center justify-between">
           <span class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-zinc-400">Channels</span>
+          <button onclick="createNewChannel()" class="text-xs text-brand-500 hover:text-brand-600 font-bold px-1.5 py-0.5 rounded bg-brand-500/10">+ New</button>
         </div>
         <ul id="channelList" class="space-y-0.5">
-          <li>
-            <button onclick="selectChannel('school')" id="btn-school" class="w-full flex items-center px-2.5 py-1.5 rounded-lg text-sm text-brand-600 dark:text-brand-400 bg-brand-500/10 font-semibold">
-              # school
-            </button>
-          </li>
-          <li>
-            <button onclick="selectChannel('friend-talk')" id="btn-friend-talk" class="w-full flex items-center px-2.5 py-1.5 rounded-lg text-sm text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800">
-              # friend-talk
-            </button>
-          </li>
+          <!-- Dynamically loaded channels appear here -->
         </ul>
       </div>
 
@@ -91,8 +83,8 @@
       <div class="flex items-center gap-3 min-w-0">
         <div class="font-bold text-xl text-gray-400">#</div>
         <div class="min-w-0">
-          <h1 id="roomTitle" class="font-bold text-base truncate">school</h1>
-          <p class="text-xs text-gray-500 dark:text-zinc-400 truncate">Stored securely and privately on your device</p>
+          <h1 id="roomTitle" class="font-bold text-base truncate">No Channel Selected</h1>
+          <p class="text-xs text-gray-500 dark:text-zinc-400 truncate">Create or select a channel to start chatting</p>
         </div>
       </div>
       <button onclick="clearMessages()" class="px-3 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-500 text-xs font-semibold rounded-lg transition">Clear History</button>
@@ -108,7 +100,7 @@
           id="messageInput"
           type="text"
           autocomplete="off"
-          placeholder="Type a private message..."
+          placeholder="Select a channel first..."
           class="flex-1 bg-transparent text-sm focus:outline-none placeholder-gray-400 dark:placeholder-zinc-500"
         />
         <button type="submit" class="px-4 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium rounded-lg transition">Send</button>
@@ -117,7 +109,8 @@
   </main>
 
   <script>
-    let activeChannel = 'school';
+    let channels = JSON.parse(localStorage.getItem('pulsechat_channels')) || [];
+    let activeChannel = channels.length > 0 ? channels[0] : null;
     let currentUser = JSON.parse(localStorage.getItem('pulsechat_user')) || {
       name: 'You',
       picture: null
@@ -125,7 +118,12 @@
 
     function startPulseChat() {
       updateUserUI();
-      loadMessages();
+      renderChannels();
+      if (activeChannel) {
+        selectChannel(activeChannel);
+      } else {
+        loadMessages();
+      }
       initGoogleAuth();
     }
 
@@ -136,6 +134,123 @@
       } else {
         document.getElementById('myAvatarText').textContent = currentUser.name.slice(0, 2).toUpperCase();
       }
+    }
+
+    function renderChannels() {
+      const list = document.getElementById('channelList');
+      if (channels.length === 0) {
+        list.innerHTML = `<p class="text-xs text-gray-400 px-2 py-2">No channels yet. Click "+ New" to create one.</p>`;
+        return;
+      }
+      let html = '';
+      channels.forEach(ch => {
+        const isActive = ch === activeChannel;
+        const className = isActive 
+          ? "w-full flex items-center px-2.5 py-1.5 rounded-lg text-sm text-brand-600 dark:text-brand-400 bg-brand-500/10 font-semibold"
+          : "w-full flex items-center px-2.5 py-1.5 rounded-lg text-sm text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800";
+        
+        html += `
+          <li>
+            <button onclick="selectChannel('${ch}')" id="btn-${ch}" class="${className}">
+              # ${ch}
+            </button>
+          </li>
+        `;
+      });
+      list.innerHTML = html;
+    }
+
+    function createNewChannel() {
+      let name = prompt("Enter new channel name (e.g. school, friend-talk):");
+      if (!name) return;
+      name = name.trim().toLowerCase().replace(/\s+/g, '-');
+      if (channels.includes(name)) {
+        alert('Channel already exists!');
+        return;
+      }
+      channels.push(name);
+      localStorage.setItem('pulsechat_channels', JSON.stringify(channels));
+      renderChannels();
+      selectChannel(name);
+    }
+
+    function selectChannel(ch) {
+      activeChannel = ch;
+      document.getElementById('roomTitle').textContent = ch;
+      renderChannels();
+      loadMessages();
+    }
+
+    function getStorageKey() {
+      return 'pulsechat_messages_' + activeChannel;
+    }
+
+    function handleSendMessage(e) {
+      e.preventDefault();
+      if (!activeChannel) {
+        alert('Please select or create a channel first!');
+        return;
+      }
+      const input = document.getElementById('messageInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      const messages = JSON.parse(localStorage.getItem(getStorageKey()) || '[]');
+      messages.push({
+        senderName: currentUser.name,
+        senderPic: currentUser.picture,
+        text: text,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
+
+      localStorage.setItem(getStorageKey(), JSON.stringify(messages));
+      input.value = '';
+      loadMessages();
+    }
+
+    function loadMessages() {
+      const feed = document.getElementById('messageFeed');
+      if (!activeChannel) {
+        feed.innerHTML = '<p class="text-xs text-gray-400 text-center py-6">No channel selected.</p>';
+        return;
+      }
+      const messages = JSON.parse(localStorage.getItem(getStorageKey()) || '[]');
+      
+      let html = '';
+      messages.forEach((m) => {
+        const avatarHtml = m.senderPic 
+          ? `<img src="${m.senderPic}" class="w-full h-full object-cover"/>` 
+          : `<span class="text-xs">${m.senderName.slice(0, 2).toUpperCase()}</span>`;
+
+        html += `
+          <div class="flex items-start gap-3 px-2 py-1">
+            <div class="w-8 h-8 rounded-full bg-brand-600 text-white font-bold text-xs flex items-center justify-center shrink-0 overflow-hidden">${avatarHtml}</div>
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="font-semibold text-sm">${m.senderName}</span>
+                <span class="text-xs text-gray-400">${m.time}</span>
+              </div>
+              <p class="text-sm text-gray-800 dark:text-zinc-200">${m.text}</p>
+            </div>
+          </div>
+        `;
+      });
+      feed.innerHTML = html || '<p class="text-xs text-gray-400 text-center py-6">No messages in #' + activeChannel + '.</p>';
+      feed.scrollTop = feed.scrollHeight;
+    }
+
+    function clearMessages() {
+      if (!activeChannel) return;
+      if (confirm('Clear all messages in #' + activeChannel + '?')) {
+        localStorage.removeItem(getStorageKey());
+        loadMessages();
+      }
+    }
+
+    function openGmailInvite() {
+      const subject = encodeURIComponent("Join me on PulseChat!");
+      const body = encodeURIComponent("Hey! Check out my private chat app here: " + window.location.href);
+      window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`, '_blank');
     }
 
     function initGoogleAuth() {
@@ -163,83 +278,6 @@
       localStorage.setItem('pulsechat_user', JSON.stringify(currentUser));
       updateUserUI();
       alert('Successfully signed in as ' + currentUser.name + '!');
-    }
-
-    function selectChannel(ch) {
-      activeChannel = ch;
-      document.getElementById('roomTitle').textContent = ch;
-      ['school', 'friend-talk'].forEach(c => {
-        const btn = document.getElementById(`btn-${c}`);
-        if (c === ch) {
-          btn.className = "w-full flex items-center px-2.5 py-1.5 rounded-lg text-sm text-brand-600 dark:text-brand-400 bg-brand-500/10 font-semibold";
-        } else {
-          btn.className = "w-full flex items-center px-2.5 py-1.5 rounded-lg text-sm text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800";
-        }
-      });
-      loadMessages();
-    }
-
-    function getStorageKey() {
-      return 'pulsechat_messages_' + activeChannel;
-    }
-
-    function handleSendMessage(e) {
-      e.preventDefault();
-      const input = document.getElementById('messageInput');
-      const text = input.value.trim();
-      if (!text) return;
-
-      const messages = JSON.parse(localStorage.getItem(getStorageKey()) || '[]');
-      messages.push({
-        senderName: currentUser.name,
-        senderPic: currentUser.picture,
-        text: text,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      });
-
-      localStorage.setItem(getStorageKey(), JSON.stringify(messages));
-      input.value = '';
-      loadMessages();
-    }
-
-    function loadMessages() {
-      const feed = document.getElementById('messageFeed');
-      const messages = JSON.parse(localStorage.getItem(getStorageKey()) || '[]');
-      
-      let html = '';
-      messages.forEach((m) => {
-        const avatarHtml = m.senderPic 
-          ? `<img src="${m.senderPic}" class="w-full h-full object-cover"/>` 
-          : `<span class="text-xs">${m.senderName.slice(0, 2).toUpperCase()}</span>`;
-
-        html += `
-          <div class="flex items-start gap-3 px-2 py-1">
-            <div class="w-8 h-8 rounded-full bg-brand-600 text-white font-bold text-xs flex items-center justify-center shrink-0 overflow-hidden">${avatarHtml}</div>
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="font-semibold text-sm">${m.senderName}</span>
-                <span class="text-xs text-gray-400">${m.time}</span>
-              </div>
-              <p class="text-sm text-gray-800 dark:text-zinc-200">${m.text}</p>
-            </div>
-          </div>
-        `;
-      });
-      feed.innerHTML = html || '<p class="text-xs text-gray-400 text-center py-6">No messages in #' + activeChannel + '. Your chat is completely private.</p>';
-      feed.scrollTop = feed.scrollHeight;
-    }
-
-    function clearMessages() {
-      if (confirm('Clear all messages in #' + activeChannel + '?')) {
-        localStorage.removeItem(getStorageKey());
-        loadMessages();
-      }
-    }
-
-    function openGmailInvite() {
-      const subject = encodeURIComponent("Join me on PulseChat!");
-      const body = encodeURIComponent("Hey! Check out my private chat app here: " + window.location.href);
-      window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`, '_blank');
     }
 
     window.onload = startPulseChat;
