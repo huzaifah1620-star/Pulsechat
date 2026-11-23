@@ -71,7 +71,7 @@
           </div>
           <div class="min-w-0">
             <p id="myDisplayName" class="text-sm font-semibold truncate">You</p>
-            <p class="text-xs text-emerald-400 font-medium truncate">Locked & Secure</p>
+            <p id="myRoleText" class="text-xs text-emerald-400 font-medium truncate">Secure Mode</p>
           </div>
         </div>
       </div>
@@ -124,29 +124,34 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // CHANGE THIS TO WHATEVER PASSWORD YOU WANT YOUR FRIENDS TO USE:
-    const SECRET_PASSCODE = "huzaifah1620-star";
+    // 👉 CHANGE YOUR PASSWORD HERE:
+    const SECRET_PASSCODE = "mysecret123";
+    
+    // 👉 PUT YOUR EXACT GOOGLE EMAIL HERE TO BE ADMIN AUTOMATICALLY:
+    const ADMIN_EMAIL = "your-email@gmail.com";
 
     let channels = JSON.parse(localStorage.getItem('pulsechat_channels')) || [];
     let activeChannel = channels.length > 0 ? channels[0] : null;
     let currentUser = JSON.parse(localStorage.getItem('pulsechat_user')) || {
       name: 'You',
-      picture: null
+      picture: null,
+      email: null
     };
     let unsubscribeMessages = null;
 
     function startPulseChat() {
-      // Prompt for passcode right when the page opens
-      let enteredPass = prompt("Enter the Secret Passcode to unlock PulseChat:");
-      if (enteredPass !== SECRET_PASSCODE) {
-        document.body.innerHTML = `
-          <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh; background:#09090b; color:#f4f4f5; font-family:sans-serif; text-align:center; padding:20px;">
-            <div style="font-size:48px; margin-bottom:16px;">🔒</div>
-            <h1 style="font-size:24px; font-weight:bold; margin-bottom:8px;">Access Denied</h1>
-            <p style="color:#a1a1aa; font-size:14px;">You need the correct secret passcode to view this private chat.</p>
-          </div>
-        `;
-        return;
+      if (currentUser.email !== ADMIN_EMAIL) {
+        let enteredPass = prompt("Enter the Secret Passcode to unlock PulseChat:");
+        if (enteredPass !== SECRET_PASSCODE) {
+          document.body.innerHTML = `
+            <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh; background:#09090b; color:#f4f4f5; font-family:sans-serif; text-align:center; padding:20px;">
+              <div style="font-size:48px; margin-bottom:16px;">🔒</div>
+              <h1 style="font-size:24px; font-weight:bold; margin-bottom:8px;">Access Denied</h1>
+              <p style="color:#a1a1aa; font-size:14px;">You need the correct secret passcode to view this private chat.</p>
+            </div>
+          `;
+          return;
+        }
       }
 
       updateUserUI();
@@ -161,6 +166,10 @@
 
     function updateUserUI() {
       document.getElementById('myDisplayName').textContent = currentUser.name;
+      if (currentUser.email === ADMIN_EMAIL) {
+        document.getElementById('myRoleText').textContent = "👑 Admin";
+        document.getElementById('myRoleText').className = "text-xs text-brand-400 font-bold truncate";
+      }
       if (currentUser.picture) {
         document.getElementById('myAvatar').innerHTML = `<img src="${currentUser.picture}" class="w-full h-full object-cover"/>`;
       } else {
@@ -193,10 +202,12 @@
     }
 
     function createNewChannel() {
-      let pass = prompt("Enter the Secret Passcode to create a channel:");
-      if (pass !== SECRET_PASSCODE) {
-        alert("Incorrect passcode!");
-        return;
+      if (currentUser.email !== ADMIN_EMAIL) {
+        let pass = prompt("Enter the Secret Passcode to create a channel:");
+        if (pass !== SECRET_PASSCODE) {
+          alert("Incorrect passcode!");
+          return;
+        }
       }
 
       let name = prompt("Enter new channel name:");
@@ -311,12 +322,14 @@
 
       currentUser = {
         name: profile.name,
-        picture: profile.picture
+        picture: profile.picture,
+        email: profile.email
       };
 
       localStorage.setItem('pulsechat_user', JSON.stringify(currentUser));
       updateUserUI();
-      alert('Successfully signed in as ' + currentUser.name + '!');
+      alert('Successfully signed in as ' + currentUser.name + ' (' + currentUser.email + ')!');
+      window.location.reload();
     }
 
     window.onload = startPulseChat;
