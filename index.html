@@ -76,7 +76,7 @@
         </div>
       </div>
       <!-- Google Sign In Button Container -->
-      <div id="googleSignInBtn" class="flex justify-center w-full mt-1"></div>
+      <div id="googleSignInBtn" class="flex justify-center w-full mt-1 overflow-hidden"></div>
     </div>
   </aside>
 
@@ -201,4 +201,105 @@
     function loadMessages() {
       const feed = document.getElementById('messageFeed');
       if (!activeChannel) {
-        feed.innerHTML = '<p class="text-xs text-
+        feed.innerHTML = '<p class="text-xs text-zinc-500 text-center py-6">No channel selected.</p>';
+        return;
+      }
+
+      if (unsubscribeMessages) {
+        unsubscribeMessages();
+      }
+
+      unsubscribeMessages = db.collection('channels').doc(activeChannel).collection('messages')
+        .orderBy('timestamp', 'asc')
+        .onSnapshot((snapshot) => {
+          let html = '';
+          snapshot.forEach((doc) => {
+            const m = doc.data();
+            const avatarHtml = m.senderPic 
+              ? `<img src="${m.senderPic}" class="w-full h-full object-cover"/>` 
+              : `<span class="text-xs">${(m.senderName || 'U').slice(0, 2).toUpperCase()}</span>`;
+
+            html += `
+              <div class="flex items-start gap-3 px-2 py-1.5 hover:bg-zinc-900/30 rounded-lg transition">
+                <div class="w-8 h-8 rounded-full bg-brand-600 text-white font-bold text-xs flex items-center justify-center shrink-0 overflow-hidden shadow-sm">${avatarHtml}</div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="font-semibold text-sm text-zinc-200">${escapeHtml(m.senderName)}</span>
+                    <span class="text-xs text-zinc-500">${m.time}</span>
+                  </div>
+                  <p class="text-sm text-zinc-300 leading-relaxed">${escapeHtml(m.text)}</p>
+                </div>
+              </div>
+            `;
+          });
+          feed.innerHTML = html || `<p class="text-xs text-zinc-500 text-center py-6">No messages in #${activeChannel}. Be the first to say something!</p>`;
+          feed.scrollTop = feed.scrollHeight;
+        });
+    }
+
+    function handleSendMessage(e) {
+      e.preventDefault();
+      if (!activeChannel) {
+        alert('Please select or create a channel first!');
+        return;
+      }
+      const input = document.getElementById('messageInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      db.collection('channels').doc(activeChannel).collection('messages').add({
+        senderName: currentUser.name,
+        senderPic: currentUser.picture || null,
+        text: text,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(() => {
+        input.value = '';
+      }).catch((error) => {
+        console.error("Error sending message: ", error);
+        alert("Failed to send message. Make sure Firestore Test Mode is enabled.");
+      });
+    }
+
+    function escapeHtml(text) {
+      const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+      return text.replace(/[&<>"']/g, m => map[m]);
+    }
+
+    function openGmailInvite() {
+      const subject = encodeURIComponent("Join me on PulseChat!");
+      const body = encodeURIComponent("Hey! Check out my private chat app here: " + window.location.href);
+      window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`, '_blank');
+    }
+
+    function initGoogleAuth() {
+      google.accounts.id.initialize({
+        client_id: "25253582318-iqevtg253cplo4am4i1qdj0sevoasq6s.apps.googleusercontent.com",
+        callback: handleCredentialResponse
+      });
+      google.accounts.id.renderButton(
+        document.getElementById("googleSignInBtn"),
+        { theme: "filled_black", size: "medium", width: "220" }
+      );
+    }
+
+    function handleCredentialResponse(response) {
+      const base64Url = response.credential.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+      const profile = JSON.parse(jsonPayload);
+
+      currentUser = {
+        name: profile.name,
+        picture: profile.picture
+      };
+
+      localStorage.setItem('pulsechat_user', JSON.stringify(currentUser));
+      updateUserUI();
+      alert('Successfully signed in as ' + currentUser.name + '!');
+    }
+
+    window.onload = startPulseChat;
+  </script>
+</body>
+</html>
